@@ -5,6 +5,15 @@ from env_var import email_id, password
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
 import undetected_chromedriver as uc
+from bs4 import BeautifulSoup
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.tag import pos_tag
+import re
+
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
+
 
 chrome_options = uc.ChromeOptions()
 chrome_options.add_argument("--disable-extensions")
@@ -45,8 +54,84 @@ google_login()
 time.sleep(4)
 
 
+def get_name():
+    name_span_element = driver.find_element(
+        by=By.CSS_SELECTOR,
+        value="div.gs > div.gE.iv.gt > table > tbody > tr:nth-child(1) > td.gF.gK > table > tbody > tr > td > h3 > span > span.gD > span",
+    )
+    name = name_span_element.text
+    return name
+
+
+def process_name(name):
+    processed_name = ""
+    just_saw_comma = False
+    for alphabet in name:
+        if alphabet == " " and just_saw_comma == True:
+            just_saw_comma == False
+            processed_name = ""
+            continue
+        if alphabet == " ":
+            return processed_name
+        if alphabet == ",":
+            just_saw_comma = True
+            processed_name = ""
+        processed_name += alphabet
+    return processed_name
+
+
+def process_email_body():
+    text_content_div = driver.find_element(
+        by=By.CSS_SELECTOR, value="div.gs > div:nth-child(3)"
+    )
+    div_innerhtml = text_content_div.get_attribute("innerHTML")
+    soup = BeautifulSoup(div_innerhtml, "html.parser")
+    raw_text = soup.get_text().lower()
+    print(raw_text)
+    return raw_text
+
+
+def process_text(raw_text):
+    # Tokenize the text
+    text = raw_text
+    tokens = word_tokenize(text)
+
+    # Perform POS tagging
+    tagged_tokens = pos_tag(tokens)
+
+    # Define pattern for tech stack keywords
+    tech_stack_patterns = [
+        "c++",
+        "java",
+        "python",
+        "django",
+        "react",
+        "angular",
+        "sql",
+        "nosql",
+        "javascript",
+        "express",
+        "flask",
+        "nodejs",
+    ]
+
+    # Match tech stack keywords and extract relevant information
+    tech_stack = [token for token, _ in tagged_tokens if token in tech_stack_patterns]
+    # find years of experience tags
+    experience_pattern = r"\b(\d+)\s*\+?\s*(?:years|y(?:rs)?|y)\b"
+    years_of_experience = re.findall(experience_pattern, text)
+    print("Tech Stack:", tech_stack)
+    print("Years of Experience:", years_of_experience)
+
+    return [tech_stack, years_of_experience]
+
+
 def analyse_mail():
-    pass
+    name = get_name()
+    processed_name = process_name(name)
+    print(processed_name)
+    raw_text = process_email_body()
+    tech_stack, years_of_experience = process_text(raw_text)
 
 
 def compose_mail():
@@ -61,6 +146,8 @@ def reply_to_mail(row, mail_open_status):
             by=By.XPATH,
             value="/html/body/div[7]/div[3]/div/div[2]/div[2]/div/div/div/div/div[1]/div[2]/div[1]/div/div[1]/div/div",
         )
+        analyse_mail()
+        time.sleep(3)
         back_button_field.click()
         time.sleep(2)
         return
@@ -97,6 +184,7 @@ def manage_mails():
     print(is_there_an_unread_mail)
     if is_there_an_unread_mail == False:
         return
+    time.sleep(3)
     manage_mails()
 
 
