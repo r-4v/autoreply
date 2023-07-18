@@ -1,1 +1,4 @@
 botenv/
+env_var.py
+geckodriver.log
+.vscode/
